@@ -120,7 +120,9 @@ footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
     <button class="btn btn-primary" onclick="go('scr-submit')">🙏 기도제목 남기기</button>
     <div style="height:10px"></div>
     <button class="btn btn-ghost" onclick="goMy()">📖 내 기도제목 보기</button>
-    <p class="notice">남겨주신 기도제목은 <b>본인과 중보기도팀만</b> 볼 수 있습니다.<br>다른 성도에게는 보이지 않습니다.</p>
+    <div style="height:10px"></div>
+    <button class="btn btn-ghost" onclick="openPublic()">🤲 함께 기도해요 (공개 게시판)</button>
+    <p class="notice">남겨주신 기도제목은 기본적으로 <b>본인과 중보기도팀만</b> 볼 수 있습니다.<br>제출할 때 '모두에게 공개'를 선택하시면 공개 게시판에서 함께 기도받을 수 있습니다.</p>
     <div style="text-align:center; margin-top:22px">
       <button class="admin-link" onclick="goAdmin()">관리자·중보기도팀 로그인</button>
     </div>
@@ -162,6 +164,9 @@ footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
       </div>
       <label class="f">기도 종료 희망일 (선택)</label>
       <input type="date" id="fEndDate">
+      <label class="agree" style="margin-top:12px"><input type="checkbox" id="fPublic">
+        <span><b>모두에게 공개해 함께 기도받기</b><br>
+        공개 게시판에 올라가 누구나 볼 수 있습니다. 이름은 익명 선택 시 '익명'으로 표시되고, <b>휴대폰번호는 절대 공개되지 않습니다.</b> 나중에 내 기도제목에서 바꿀 수 있습니다.</span></label>
       <label class="agree"><input type="checkbox" id="fAgree">
         <span><b>개인정보 수집·이용에 동의합니다.</b><br>
         수집 항목: 이름, 휴대폰번호, 기도제목 내용 · 목적: 중보기도 및 본인 확인 · 보관: 상시기도 기본 <span id="retentionTxt">3</span>개월 (설정에 따름). 동의하지 않으면 제출할 수 없습니다.</span></label>
@@ -223,11 +228,21 @@ footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
       <textarea id="eContent"></textarea>
       <label class="f">기도 종료 희망일 (선택)</label>
       <input type="date" id="eEndDate">
+      <label class="agree" style="margin-top:10px"><input type="checkbox" id="ePublic">
+        <span>모두에게 공개 (공개 게시판에 표시)</span></label>
       <div style="height:16px"></div>
       <button class="btn btn-primary" onclick="saveMyPrayer()">수정 저장</button>
       <div style="height:10px"></div>
       <button class="btn btn-danger" onclick="deleteMyPrayer()">이 기도제목 삭제(철회)</button>
     </div>
+  </section>
+
+  <!-- 공개 게시판 -->
+  <section id="scr-public" class="screen">
+    <button class="backlink" onclick="go('scr-home')">← 처음으로</button>
+    <h3>🤲 함께 기도해요</h3>
+    <p class="hint">성도님들이 공개한 기도제목입니다. 함께 기도해 주세요.<br>내 기도제목도 공개하고 싶으면, 남길 때 '모두에게 공개'를 선택하세요.</p>
+    <div id="publicList"></div>
   </section>
 
   <!-- 관리자·중보기도팀 로그인/가입 -->
@@ -331,6 +346,8 @@ footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
         <label class="switch"><input type="checkbox" id="sAllowAnon"><i></i></label></div>
       <div class="switch-row"><span>열람권한자에게 연락처 마스킹</span>
         <label class="switch"><input type="checkbox" id="sViewerMask"><i></i></label></div>
+      <div class="switch-row"><span>공개 게시판 사용</span>
+        <label class="switch"><input type="checkbox" id="sPublicBoard"><i></i></label></div>
       <label class="f">상시기도 기본 보관 기간</label>
       <select id="sRetention">
         <option value="1">1개월</option><option value="3">3개월</option><option value="6">6개월</option>
@@ -358,6 +375,7 @@ let SETTINGS = {
   greeting: "기도제목을 남겨주세요.\n중보기도팀이 함께 기도합니다.",
   verse_text: "\"아무 것도 염려하지 말고 다만 모든 일에 기도와 간구로, 너희 구할 것을 감사함으로 하나님께 아뢰라\" (빌립보서 4:6)",
   allow_anonymous: true, viewer_phone_mask: true, retention_months: 3,
+  public_board_enabled: true,
   admin_emails: []
 };
 let mySession = null;        // {phone, pin}
@@ -431,7 +449,8 @@ async function submitPrayer(){
     p_name: name, p_is_anonymous: $("fAnon").checked && SETTINGS.allow_anonymous,
     p_phone: phone, p_pin: pin, p_types: types, p_title: title, p_content: content,
     p_target_type: $("fTargetType").value, p_target_name: $("fTargetName").value.trim() || null,
-    p_end_date: $("fEndDate").value || null
+    p_end_date: $("fEndDate").value || null,
+    p_is_public: $("fPublic").checked
   });
   btn.disabled = false; btn.textContent = "기도제목 제출하기";
   if(error) return showMsg("submitMsg", "제출에 실패했습니다. 잠시 후 다시 시도해 주세요. (" + esc(error.message) + ")");
@@ -467,7 +486,7 @@ function renderMyList(){
   $("myList").innerHTML = myPrayers.map(p => `
     <div class="card prayer-item" onclick="openMyEdit('${p.id}')">
       <div class="row between"><h3>${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
-      <div>${typeBadges(p.types)}</div>
+      <div>${typeBadges(p.types)}${p.is_public ? ' <span class="badge" style="background:#DCEEE9;color:#3E7C74">🌐 공개 중</span>' : ""}</div>
       <div class="preview">${esc(p.content)}</div>
       <div class="meta">${fmtDate(p.created_at)} 접수${p.updated_at && p.updated_at !== p.created_at ? " · 수정됨" : ""}</div>
     </div>`).join("");
@@ -479,6 +498,7 @@ function openMyEdit(id){
   $("eRegular").checked = (p.types || []).includes("regular");
   $("eTitle").value = p.title; $("eContent").value = p.content;
   $("eEndDate").value = p.desired_end_date || "";
+  $("ePublic").checked = !!p.is_public;
   go("scr-myedit");
 }
 async function saveMyPrayer(){
@@ -491,7 +511,8 @@ async function saveMyPrayer(){
   const { data, error } = await sb.rpc("update_my_prayer", {
     p_id: editingId, p_phone: mySession.phone, p_pin: mySession.pin,
     p_title: $("eTitle").value.trim(), p_content: $("eContent").value.trim(),
-    p_types: types, p_end_date: $("eEndDate").value || null
+    p_types: types, p_end_date: $("eEndDate").value || null,
+    p_is_public: $("ePublic").checked
   });
   if(error || !data) return showMsg("editMsg", "수정에 실패했습니다. 다시 시도해 주세요.");
   await fetchMyPrayers();
@@ -504,6 +525,24 @@ async function deleteMyPrayer(){
   if(!ok){ myPrayers = []; $("myList").innerHTML = '<div class="card">남은 기도제목이 없습니다.</div>'; go("scr-mylist"); }
 }
 function logoutMy(){ mySession = null; sessionStorage.removeItem("prayer_my"); go("scr-home"); }
+
+/* ============ 공개 게시판 (누구나 열람) ============ */
+async function openPublic(){
+  go("scr-public");
+  $("publicList").innerHTML = '<div class="card">불러오는 중…</div>';
+  const { data, error } = await sb.rpc("public_list_prayers");
+  if(error){ $("publicList").innerHTML = '<div class="card">게시판을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>'; return; }
+  if(data === null){ $("publicList").innerHTML = '<div class="card">지금은 공개 게시판이 닫혀 있습니다.</div>'; return; }
+  const list = data || [];
+  $("publicList").innerHTML = list.length ? list.map(p => `
+    <div class="card">
+      <div class="row between"><h3 style="margin:0">${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
+      <div style="margin:6px 0">${typeBadges(p.types)}</div>
+      <p style="white-space:pre-wrap; margin:6px 0">${esc(p.content)}</p>
+      <div class="meta" style="color:var(--sub); font-size:13px">${esc(p.name)} · ${fmtDate(p.created_at)}${p.target_name ? " · 대상: " + esc(p.target_name) : ""}</div>
+    </div>`).join("")
+    : '<div class="card">아직 공개된 기도제목이 없습니다.</div>';
+}
 
 /* ============ 관리자·중보기도팀 (이름·연락처·PIN) ============ */
 function goAdmin(){
@@ -592,16 +631,24 @@ async function openDetail(id){
     <p style="white-space:pre-wrap">${esc(p.content)}</p>
     <div class="meta" style="color:var(--sub); font-size:14px">
       제출자: ${p.is_anonymous ? "익명" : esc(p.name)} · 연락처: ${esc(phoneFor(p))}<br>
-      대상: ${esc(p.target_name || "-")} · 접수: ${fmtDate(p.created_at)}${p.desired_end_date ? " · 종료 희망: " + p.desired_end_date : ""}
+      대상: ${esc(p.target_name || "-")} · 접수: ${fmtDate(p.created_at)}${p.desired_end_date ? " · 종료 희망: " + p.desired_end_date : ""}<br>
+      공개 여부: ${p.is_public ? "🌐 공개 중 (게시판에 표시)" : "비공개"}
     </div>
     ${isAdmin ? `<div class="row" style="margin-top:14px">
       <button class="btn btn-ghost btn-small" onclick="setStatus('praying')">기도 중으로</button>
       <button class="btn btn-ghost btn-small" onclick="setStatus('answered')">응답됨</button>
       <button class="btn btn-ghost btn-small" onclick="setStatus('archived')">보관</button>
       <button class="btn btn-ghost btn-small" onclick="setStatus('received')">접수됨으로</button>
+      <button class="btn btn-ghost btn-small" onclick="togglePublic()">${p.is_public ? "비공개로 전환" : "게시판에 공개"}</button>
       <button class="btn btn-danger btn-small" onclick="adminDelete()">삭제</button>
     </div>` : '<p class="hint" style="margin-top:12px">열람권한자는 읽기 전용입니다. 상태 변경은 관리자에게 요청해 주세요.</p>'}`;
   await loadMemos(); go("scr-detail");
+}
+async function togglePublic(){
+  const p = allPrayers.find(x => x.id === detailId); if(!p) return;
+  const { data, error } = await sb.rpc("team_set_public", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_id: detailId, p_public: !p.is_public });
+  if(error || !data) return alert("공개 전환에 실패했습니다.");
+  await openAdmin(); openDetail(detailId);
 }
 async function setStatus(s){
   const { data, error } = await sb.rpc("team_set_status", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_id: detailId, p_status: s });
@@ -657,6 +704,7 @@ function goSettings(){
   $("sAdminEmails").value = (SETTINGS.admin_emails || []).join("\n");
   $("sAllowAnon").checked = !!SETTINGS.allow_anonymous;
   $("sViewerMask").checked = !!SETTINGS.viewer_phone_mask;
+  $("sPublicBoard").checked = SETTINGS.public_board_enabled !== false;
   $("sRetention").value = String(SETTINGS.retention_months || 3);
   go("scr-settings");
 }
@@ -666,6 +714,7 @@ async function saveSettings(){
     greeting: $("sGreeting").value, verse_text: $("sVerse").value,
     admin_emails: $("sAdminEmails").value.split(/\n+/).map(s => s.trim()).filter(Boolean),
     allow_anonymous: $("sAllowAnon").checked, viewer_phone_mask: $("sViewerMask").checked,
+    public_board_enabled: $("sPublicBoard").checked,
     retention_months: Number($("sRetention").value)
   });
   const { data, error } = await sb.rpc("team_save_settings", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_data: next });
