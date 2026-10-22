@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>중보기도함</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#FBF6EF; --card:#FFFFFF; --ink:#3A372F; --sub:#9A9184;
+  --teal:#8FBCB2; --teal-dark:#3E7C74; --teal-soft:#EAF4F1; --teal-ink:#17403A;
+  --line:#F0E7DB; --red:#D98880; --red-ink:#B4554A; --red-soft:#FBEFEC;
+  --amber:#A97F26; --amber-soft:#FAF3E0; --radius:16px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; padding:0}
+body{font-family:"Pretendard Variable",Pretendard,-apple-system,"Malgun Gothic",sans-serif;
+  background:var(--bg); color:var(--ink); font-size:17px; line-height:1.6}
+.wrap{max-width:560px; margin:0 auto; padding:20px 16px 48px}
+header.top{text-align:center; padding:18px 0 6px}
+header.top .cross{font-size:26px; color:var(--teal-dark)}
+header.top h1{font-size:26px; margin:4px 0 2px; font-weight:800; letter-spacing:-.5px}
+header.top .church{color:var(--sub); font-size:15px}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:20px; margin:14px 0; box-shadow:0 2px 10px rgba(90,70,40,.05)}
+.btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+  min-height:56px; border:none; border-radius:14px; font-size:18px; font-weight:700;
+  cursor:pointer; font-family:inherit; padding:12px 16px; text-decoration:none}
+.btn-primary{background:var(--teal); color:var(--teal-ink)}
+.btn-primary:active{background:#7AACA1}
+.btn-ghost{background:var(--teal-soft); color:var(--teal-dark)}
+.btn-danger{background:var(--red-soft); color:var(--red-ink)}
+.btn-small{min-height:44px; font-size:15px; border-radius:10px; width:auto; padding:8px 14px}
+.btn[disabled]{opacity:.5; cursor:default}
+label.f{display:block; font-weight:700; margin:18px 0 6px; font-size:16px}
+label.f:first-child{margin-top:0}
+.hint{color:var(--sub); font-size:14px; margin-top:4px}
+input[type=text],input[type=tel],input[type=password],input[type=email],input[type=date],textarea,select{
+  width:100%; font-size:17px; font-family:inherit; padding:13px 14px; border:1.5px solid var(--line);
+  border-radius:12px; background:#FFFDF9; color:var(--ink); outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--teal)}
+textarea{min-height:130px; resize:vertical}
+.checks{display:flex; gap:10px; flex-wrap:wrap}
+.check-chip{flex:1; min-width:130px}
+.check-chip input{display:none}
+.check-chip span{display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:14px 10px; border:1.5px solid var(--line); border-radius:12px; font-weight:700;
+  cursor:pointer; background:#FFFDF9; font-size:17px}
+.check-chip input:checked + span{border-color:var(--teal); background:var(--teal-soft); color:var(--teal-dark)}
+.check-chip.urgent input:checked + span{border-color:var(--red); background:var(--red-soft); color:var(--red-ink)}
+.agree{display:flex; gap:10px; align-items:flex-start; background:#FFFDF9; border:1.5px solid var(--line);
+  border-radius:12px; padding:14px; margin-top:18px; font-size:15px}
+.agree input{width:22px; height:22px; margin-top:2px; accent-color:var(--teal); flex:none}
+.badge{display:inline-block; font-size:13px; font-weight:800; padding:2px 9px; border-radius:99px; vertical-align:middle}
+.badge-urgent{background:var(--red-soft); color:var(--red-ink)}
+.badge-regular{background:var(--teal-soft); color:var(--teal-dark)}
+.badge-status{background:#F1EBE0; color:#7A6F5C}
+.badge-status.praying{background:var(--amber-soft); color:var(--amber)}
+.badge-status.answered{background:var(--teal-soft); color:var(--teal-dark)}
+.prayer-item{cursor:pointer}
+.prayer-item h3{margin:0 0 4px; font-size:18px}
+.prayer-item .meta{color:var(--sub); font-size:14px}
+.prayer-item .preview{color:#5C5546; font-size:15px; margin-top:6px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+.chip{border:1.5px solid var(--line); background:#fff; border-radius:99px; padding:7px 14px;
+  font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; color:var(--sub)}
+.chip.on{background:var(--teal); border-color:var(--teal); color:var(--teal-ink)}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0}
+.stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 8px; text-align:center}
+.stat b{display:block; font-size:24px; color:var(--teal-dark)}
+.stat.urgent b{color:var(--red-ink)}
+.stat span{font-size:13px; color:var(--sub)}
+.verse{text-align:center; color:var(--teal-dark); background:var(--teal-soft);
+  border-radius:var(--radius); padding:22px 18px; font-size:17px; line-height:1.7; margin:14px 0}
+.notice{font-size:14px; color:var(--sub); text-align:center; margin-top:14px; line-height:1.7}
+.msg{border-radius:12px; padding:12px 14px; font-size:15px; margin:12px 0; display:none}
+.msg.err{display:block; background:var(--red-soft); color:var(--red-ink)}
+.msg.ok{display:block; background:var(--teal-soft); color:var(--teal-dark)}
+.screen{display:none}
+.screen.on{display:block}
+.backlink{background:none; border:none; color:var(--teal-dark); font-size:16px; font-weight:700;
+  cursor:pointer; font-family:inherit; padding:6px 0}
+.memo{border-top:1px solid var(--line); padding:10px 0; font-size:15px}
+.memo .m-meta{color:var(--sub); font-size:13px}
+.switch-row{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line)}
+.switch-row:last-child{border-bottom:none}
+.switch{position:relative; width:52px; height:30px; flex:none}
+.switch input{opacity:0; width:0; height:0}
+.switch i{position:absolute; inset:0; background:#DDD3C2; border-radius:99px; cursor:pointer; transition:.2s}
+.switch i:before{content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s}
+.switch input:checked + i{background:var(--teal)}
+.switch input:checked + i:before{transform:translateX(22px)}
+footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
+.admin-link{color:var(--sub); font-size:14px; background:none; border:none; cursor:pointer; font-family:inherit; text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="cross">✚</div>
+    <h1 id="appTitle">중보기도함</h1>
+    <div class="church" id="churchName">충무교회</div>
+  </header>
+
+  <!-- 설정 필요 안내 -->
+  <section id="scr-config" class="screen">
+    <div class="card">
+      <h3 style="margin-top:0">아직 연결 설정이 필요합니다</h3>
+      <p>이 앱은 Supabase 연결 정보(SITE_CONFIG)가 입력되어야 작동합니다. 관리자는 세팅 가이드를 따라 연결 정보를 입력해 주세요.</p>
+    </div>
+  </section>
+
+  <!-- 홈 -->
+  <section id="scr-home" class="screen">
+    <div class="verse" id="greetingBox">기도제목을 남겨주세요.<br>중보기도팀이 함께 기도합니다.</div>
+    <button class="btn btn-primary" onclick="go('scr-submit')">🙏 기도제목 남기기</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-ghost" onclick="goMy()">📖 내 기도제목 보기</button>
+    <p class="notice">남겨주신 기도제목은 <b>본인과 중보기도팀만</b> 볼 수 있습니다.<br>다른 성도에게는 보이지 않습니다.</p>
+    <div style="text-align:center; margin-top:22px">
+      <button class="admin-link" onclick="goAdmin()">관리자·중보기도팀 로그인</button>
+    </div>
+  </section>
+
+  <!-- 기도제목 작성 -->
+  <section id="scr-submit" class="screen">
+    <button class="backlink" onclick="go('scr-home')">← 처음으로</button>
+    <div class="card">
+      <div class="msg" id="submitMsg"></div>
+      <label class="f">기도 구분 (하나 이상 선택)</label>
+      <div class="checks">
+        <label class="check-chip urgent"><input type="checkbox" id="fUrgent"><span>🚨 긴급기도</span></label>
+        <label class="check-chip"><input type="checkbox" id="fRegular" checked><span>🌿 상시기도</span></label>
+      </div>
+      <label class="f">이름</label>
+      <input type="text" id="fName" placeholder="이름을 입력하세요" autocomplete="name">
+      <div id="anonRow">
+        <label class="agree" style="margin-top:10px"><input type="checkbox" id="fAnon">
+          <span>익명으로 제출합니다 (중보기도팀 화면에도 이름이 보이지 않습니다)</span></label>
+      </div>
+      <label class="f">휴대폰번호</label>
+      <input type="tel" id="fPhone" placeholder="010-0000-0000" inputmode="tel" autocomplete="tel">
+      <div class="hint">내 기도제목을 다시 확인할 때 쓰는 본인 확인용입니다. 중보기도팀에게는 보이지 않습니다.</div>
+      <label class="f">확인용 PIN (숫자 4자리)</label>
+      <input type="password" id="fPin" placeholder="예: 1234" inputmode="numeric" maxlength="4" autocomplete="new-password">
+      <div class="hint">다음에 내 기도제목을 볼 때 이 번호가 필요합니다. 잊지 마세요.</div>
+      <label class="f">기도 제목</label>
+      <input type="text" id="fTitle" placeholder="예: 어머니 수술을 위해">
+      <label class="f">기도 내용</label>
+      <textarea id="fContent" placeholder="기도가 필요한 내용을 편하게 적어주세요."></textarea>
+      <label class="f">기도 대상 (선택)</label>
+      <div class="row">
+        <select id="fTargetType" style="flex:1">
+          <option value="self">본인</option><option value="family">가족</option>
+          <option value="other">지인·기타</option>
+        </select>
+        <input type="text" id="fTargetName" placeholder="대상 이름 (선택)" style="flex:1">
+      </div>
+      <label class="f">기도 종료 희망일 (선택)</label>
+      <input type="date" id="fEndDate">
+      <label class="agree"><input type="checkbox" id="fAgree">
+        <span><b>개인정보 수집·이용에 동의합니다.</b><br>
+        수집 항목: 이름, 휴대폰번호, 기도제목 내용 · 목적: 중보기도 및 본인 확인 · 보관: 상시기도 기본 <span id="retentionTxt">3</span>개월 (설정에 따름). 동의하지 않으면 제출할 수 없습니다.</span></label>
+      <div style="height:16px"></div>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitPrayer()">기도제목 제출하기</button>
+    </div>
+  </section>
+
+  <!-- 제출 완료 -->
+  <section id="scr-done" class="screen">
+    <div class="card" style="text-align:center">
+      <div style="font-size:40px">🕊️</div>
+      <h3>기도제목이 접수되었습니다</h3>
+      <p>중보기도팀이 함께 기도하겠습니다.<br>진행 상황은 [내 기도제목 보기]에서<br>휴대폰번호와 PIN으로 확인할 수 있습니다.</p>
+    </div>
+    <div class="verse" id="verseBox"></div>
+    <button class="btn btn-ghost" onclick="goMy()">내 기도제목 확인하기</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-ghost" onclick="go('scr-home')">처음으로</button>
+  </section>
+
+  <!-- 본인 인증 -->
+  <section id="scr-myauth" class="screen">
+    <button class="backlink" onclick="go('scr-home')">← 처음으로</button>
+    <div class="card">
+      <h3 style="margin-top:0">내 기도제목 확인</h3>
+      <div class="msg" id="myMsg"></div>
+      <label class="f">휴대폰번호</label>
+      <input type="tel" id="mPhone" placeholder="010-0000-0000" inputmode="tel">
+      <label class="f">PIN (숫자 4자리)</label>
+      <input type="password" id="mPin" inputmode="numeric" maxlength="4">
+      <div style="height:16px"></div>
+      <button class="btn btn-primary" onclick="loadMyPrayers()">확인하기</button>
+      <p class="hint" style="margin-top:12px">PIN을 잊으셨으면 교회 사무실이나 담당 목회자에게 문의해 주세요. 관리자가 본인 확인 후 초기화해 드립니다.</p>
+    </div>
+  </section>
+
+  <!-- 내 기도 목록 -->
+  <section id="scr-mylist" class="screen">
+    <button class="backlink" onclick="logoutMy()">← 로그아웃</button>
+    <h3>내 기도제목</h3>
+    <div id="myList"></div>
+    <button class="btn btn-ghost" onclick="go('scr-submit')">+ 새 기도제목 남기기</button>
+  </section>
+
+  <!-- 내 기도 수정 -->
+  <section id="scr-myedit" class="screen">
+    <button class="backlink" onclick="go('scr-mylist')">← 목록으로</button>
+    <div class="card">
+      <div class="msg" id="editMsg"></div>
+      <label class="f">기도 구분</label>
+      <div class="checks">
+        <label class="check-chip urgent"><input type="checkbox" id="eUrgent"><span>🚨 긴급기도</span></label>
+        <label class="check-chip"><input type="checkbox" id="eRegular"><span>🌿 상시기도</span></label>
+      </div>
+      <label class="f">기도 제목</label>
+      <input type="text" id="eTitle">
+      <label class="f">기도 내용</label>
+      <textarea id="eContent"></textarea>
+      <label class="f">기도 종료 희망일 (선택)</label>
+      <input type="date" id="eEndDate">
+      <div style="height:16px"></div>
+      <button class="btn btn-primary" onclick="saveMyPrayer()">수정 저장</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-danger" onclick="deleteMyPrayer()">이 기도제목 삭제(철회)</button>
+    </div>
+  </section>
+
+  <!-- 관리자 로그인 -->
+  <section id="scr-adminlogin" class="screen">
+    <button class="backlink" onclick="go('scr-home')">← 처음으로</button>
+    <div class="card">
+      <h3 style="margin-top:0">관리자·중보기도팀 로그인</h3>
+      <div class="msg" id="adminMsg"></div>
+      <label class="f">이메일</label>
+      <input type="email" id="aEmail" autocomplete="email">
+      <label class="f">비밀번호</label>
+      <input type="password" id="aPw" autocomplete="current-password">
+      <div style="height:16px"></div>
+      <button class="btn btn-primary" onclick="adminLogin()">로그인</button>
+      <p class="hint" style="margin-top:12px">처음이신가요? <a href="#" onclick="adminSignup();return false;">회원가입</a> 후 관리자의 승인을 받아야 열람할 수 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- 승인 대기 -->
+  <section id="scr-pending" class="screen">
+    <div class="card" style="text-align:center">
+      <h3>승인 대기 중입니다</h3>
+      <p>관리자가 열람 권한을 승인하면 기도제목을 볼 수 있습니다.</p>
+      <button class="btn btn-ghost" onclick="adminLogout()">로그아웃</button>
+    </div>
+  </section>
+
+  <!-- 관리자 대시보드 -->
+  <section id="scr-admin" class="screen">
+    <div class="row between">
+      <h3 style="margin:6px 0">기도제목 관리</h3>
+      <span class="hint" id="adminWho"></span>
+    </div>
+    <div class="stats">
+      <div class="stat urgent"><b id="stUrgent">0</b><span>긴급·미처리</span></div>
+      <div class="stat"><b id="stNew">0</b><span>접수됨</span></div>
+      <div class="stat"><b id="stPraying">0</b><span>기도 중</span></div>
+    </div>
+    <div class="chips" id="filterChips">
+      <button class="chip on" data-f="all" onclick="setFilter('all',this)">전체</button>
+      <button class="chip" data-f="urgent" onclick="setFilter('urgent',this)">🚨 긴급</button>
+      <button class="chip" data-f="regular" onclick="setFilter('regular',this)">🌿 상시</button>
+      <button class="chip" data-f="received" onclick="setFilter('received',this)">접수됨</button>
+      <button class="chip" data-f="praying" onclick="setFilter('praying',this)">기도 중</button>
+      <button class="chip" data-f="answered" onclick="setFilter('answered',this)">응답됨</button>
+      <button class="chip" data-f="archived" onclick="setFilter('archived',this)">보관됨</button>
+    </div>
+    <input type="text" id="adminSearch" placeholder="🔍 이름·제목·내용 검색" oninput="renderAdminList()">
+    <div id="adminList" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:18px">
+      <button class="btn btn-ghost btn-small" id="btnMembers" onclick="goMembers()">👥 권한 관리</button>
+      <button class="btn btn-ghost btn-small" id="btnSettings" onclick="goSettings()">⚙️ 설정</button>
+      <button class="btn btn-ghost btn-small" onclick="adminLogout()">로그아웃</button>
+    </div>
+  </section>
+
+  <!-- 관리자 상세 -->
+  <section id="scr-detail" class="screen">
+    <button class="backlink" onclick="go('scr-admin')">← 목록으로</button>
+    <div class="card" id="detailBox"></div>
+    <div class="card">
+      <h4 style="margin:0 0 8px">관리자 메모 <span class="hint">(제출자에게 보이지 않습니다)</span></h4>
+      <div id="memoList"></div>
+      <div class="row" style="margin-top:10px">
+        <input type="text" id="memoInput" placeholder="메모를 입력하세요" style="flex:1">
+        <button class="btn btn-primary btn-small" onclick="addMemo()">등록</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 권한 관리 -->
+  <section id="scr-members" class="screen">
+    <button class="backlink" onclick="go('scr-admin')">← 대시보드로</button>
+    <h3>권한 관리</h3>
+    <p class="hint">가입한 사람의 역할을 정합니다. '승인 대기'는 아무것도 볼 수 없습니다.</p>
+    <div id="memberList"></div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="scr-settings" class="screen">
+    <button class="backlink" onclick="go('scr-admin')">← 대시보드로</button>
+    <div class="card">
+      <h3 style="margin-top:0">설정 <span class="hint">저장하면 바로 적용됩니다</span></h3>
+      <div class="msg" id="setMsg"></div>
+      <label class="f">앱 이름</label>
+      <input type="text" id="sAppName">
+      <label class="f">교회 이름</label>
+      <input type="text" id="sChurchName">
+      <label class="f">메인 인사 문구</label>
+      <textarea id="sGreeting" style="min-height:80px"></textarea>
+      <label class="f">제출 완료 화면 성경 말씀</label>
+      <textarea id="sVerse" style="min-height:80px"></textarea>
+      <label class="f">알림 받을 관리자 이메일 (한 줄에 하나씩)</label>
+      <textarea id="sAdminEmails" style="min-height:70px" placeholder="minisiah61@gmail.com"></textarea>
+      <div class="switch-row"><span>익명 제출 허용</span>
+        <label class="switch"><input type="checkbox" id="sAllowAnon"><i></i></label></div>
+      <div class="switch-row"><span>열람권한자에게 연락처 마스킹</span>
+        <label class="switch"><input type="checkbox" id="sViewerMask"><i></i></label></div>
+      <label class="f">상시기도 기본 보관 기간</label>
+      <select id="sRetention">
+        <option value="1">1개월</option><option value="3">3개월</option><option value="6">6개월</option>
+      </select>
+      <div style="height:18px"></div>
+      <button class="btn btn-primary" onclick="saveSettings()">설정 저장</button>
+    </div>
+  </section>
+
+  <footer>남겨주신 기도제목은 본인과 중보기도팀만 볼 수 있습니다.</footer>
+</div>
+
+<script>
+/* ===== 연결 설정: Supabase 프로젝트 정보 입력 (세팅 가이드 참조) ===== */
+const SITE_CONFIG = {
+  url: "https://psuxhaunloykfnehwuto.supabase.co",
+  key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdXhoYXVubG95a2ZuZWh3dXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MTAwNDAsImV4cCI6MjEwODE4NjA0MH0.9jTyfwvDm1oRLq63Qw4h6EQ7HCotDPhVNkz5LbqhB48"
+};
+/* 알림 이메일 발송 Edge Function 이름 (배포하지 않으면 알림만 건너뜀) */
+const NOTIFY_FUNCTION = "notify-prayer";
+
+let sb = null;
+let SETTINGS = {
+  app_name: "중보기도함", church_name: "충무교회",
+  greeting: "기도제목을 남겨주세요.\n중보기도팀이 함께 기도합니다.",
+  verse_text: "\"아무 것도 염려하지 말고 다만 모든 일에 기도와 간구로, 너희 구할 것을 감사함으로 하나님께 아뢰라\" (빌립보서 4:6)",
+  allow_anonymous: true, viewer_phone_mask: true, retention_months: 3,
+  admin_emails: []
+};
+let mySession = null;        // {phone, pin}
+let myPrayers = [];
+let editingId = null;
+let adminUser = null, adminProfile = null;
+let allPrayers = [], adminFilter = "all", detailId = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const digits = s => String(s || "").replace(/\D/g, "");
+function fmtDate(iso){ if(!iso) return ""; const d = new Date(iso); return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0"); }
+function maskPhone(p){ const d = digits(p); if(d.length < 7) return p; return d.slice(0,3) + "-****-" + d.slice(-4); }
+function statusLabel(s){ return {received:"접수됨", praying:"기도 중", answered:"응답됨", archived:"보관됨"}[s] || s; }
+function typeBadges(types){ return (types||[]).map(t => t === "urgent" ? '<span class="badge badge-urgent">🚨 긴급</span>' : '<span class="badge badge-regular">🌿 상시</span>').join(" "); }
+function showMsg(id, text, ok){ const el = $(id); el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+
+function go(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  $(id).classList.add("on");
+  window.scrollTo(0, 0);
+}
+
+function applySettings(){
+  $("appTitle").textContent = SETTINGS.app_name || "중보기도함";
+  document.title = SETTINGS.app_name || "중보기도함";
+  $("churchName").textContent = SETTINGS.church_name || "";
+  $("greetingBox").innerHTML = esc(SETTINGS.greeting).replace(/\n/g, "<br>");
+  $("verseBox").textContent = SETTINGS.verse_text || "";
+  $("retentionTxt").textContent = SETTINGS.retention_months || 3;
+  $("anonRow").style.display = SETTINGS.allow_anonymous ? "" : "none";
+}
+
+async function init(){
+  if(!SITE_CONFIG.url || !SITE_CONFIG.key){ go("scr-config"); return; }
+  sb = supabase.createClient(SITE_CONFIG.url, SITE_CONFIG.key);
+  try{
+    const { data } = await sb.from("app_settings").select("data").eq("id", 1).single();
+    if(data && data.data) SETTINGS = Object.assign({}, SETTINGS, data.data);
+  }catch(e){ /* 기본값 사용 */ }
+  applySettings();
+  go("scr-home");
+  const { data: sess } = await sb.auth.getSession();
+  if(sess && sess.session){ adminUser = sess.session.user; await loadProfile(); }
+}
+
+/* ============ 성도: 제출 ============ */
+async function submitPrayer(){
+  const types = [];
+  if($("fUrgent").checked) types.push("urgent");
+  if($("fRegular").checked) types.push("regular");
+  const name = $("fName").value.trim();
+  const phone = digits($("fPhone").value);
+  const pin = $("fPin").value.trim();
+  const title = $("fTitle").value.trim();
+  const content = $("fContent").value.trim();
+  if(!types.length) return showMsg("submitMsg", "기도 구분(긴급/상시)을 하나 이상 선택해 주세요.");
+  if(!name) return showMsg("submitMsg", "이름을 입력해 주세요.");
+  if(!/^01[0-9]{8,9}$/.test(phone)) return showMsg("submitMsg", "휴대폰번호를 정확히 입력해 주세요.");
+  if(!/^[0-9]{4}$/.test(pin)) return showMsg("submitMsg", "PIN은 숫자 4자리로 정해 주세요.");
+  if(!title) return showMsg("submitMsg", "기도 제목을 입력해 주세요.");
+  if(!content) return showMsg("submitMsg", "기도 내용을 입력해 주세요.");
+  if(!$("fAgree").checked) return showMsg("submitMsg", "개인정보 수집·이용에 동의해 주세요.");
+  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "제출 중…";
+  const { data, error } = await sb.rpc("submit_prayer", {
+    p_name: name, p_is_anonymous: $("fAnon").checked && SETTINGS.allow_anonymous,
+    p_phone: phone, p_pin: pin, p_types: types, p_title: title, p_content: content,
+    p_target_type: $("fTargetType").value, p_target_name: $("fTargetName").value.trim() || null,
+    p_end_date: $("fEndDate").value || null
+  });
+  btn.disabled = false; btn.textContent = "기도제목 제출하기";
+  if(error) return showMsg("submitMsg", "제출에 실패했습니다. 잠시 후 다시 시도해 주세요. (" + esc(error.message) + ")");
+  // 관리자 알림 이메일 (Edge Function이 배포된 경우에만 동작, 실패해도 제출은 완료)
+  try{
+    await sb.functions.invoke(NOTIFY_FUNCTION, { body: { prayer_id: data, site_url: location.origin + location.pathname } });
+  }catch(e){ /* 알림 실패 무시 */ }
+  go("scr-done");
+}
+
+/* ============ 성도: 내 기도 ============ */
+function goMy(){
+  const saved = sessionStorage.getItem("prayer_my");
+  if(saved){ mySession = JSON.parse(saved); fetchMyPrayers(); }
+  else go("scr-myauth");
+}
+async function loadMyPrayers(){
+  const phone = digits($("mPhone").value), pin = $("mPin").value.trim();
+  if(!/^01[0-9]{8,9}$/.test(phone)) return showMsg("myMsg", "휴대폰번호를 정확히 입력해 주세요.");
+  if(!/^[0-9]{4}$/.test(pin)) return showMsg("myMsg", "PIN 4자리를 입력해 주세요.");
+  mySession = { phone, pin };
+  const ok = await fetchMyPrayers();
+  if(ok) sessionStorage.setItem("prayer_my", JSON.stringify(mySession));
+}
+async function fetchMyPrayers(){
+  const { data, error } = await sb.rpc("my_prayers", { p_phone: mySession.phone, p_pin: mySession.pin });
+  if(error){ showMsg("myMsg", "확인에 실패했습니다. 번호와 PIN을 다시 확인해 주세요."); return false; }
+  myPrayers = data || [];
+  if(!myPrayers.length){ showMsg("myMsg", "일치하는 기도제목이 없습니다. 번호와 PIN을 확인해 주세요."); return false; }
+  renderMyList(); go("scr-mylist"); return true;
+}
+function renderMyList(){
+  $("myList").innerHTML = myPrayers.map(p => `
+    <div class="card prayer-item" onclick="openMyEdit('${p.id}')">
+      <div class="row between"><h3>${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
+      <div>${typeBadges(p.types)}</div>
+      <div class="preview">${esc(p.content)}</div>
+      <div class="meta">${fmtDate(p.created_at)} 접수${p.updated_at && p.updated_at !== p.created_at ? " · 수정됨" : ""}</div>
+    </div>`).join("");
+}
+function openMyEdit(id){
+  const p = myPrayers.find(x => x.id === id); if(!p) return;
+  editingId = id;
+  $("eUrgent").checked = (p.types || []).includes("urgent");
+  $("eRegular").checked = (p.types || []).includes("regular");
+  $("eTitle").value = p.title; $("eContent").value = p.content;
+  $("eEndDate").value = p.desired_end_date || "";
+  go("scr-myedit");
+}
+async function saveMyPrayer(){
+  const types = [];
+  if($("eUrgent").checked) types.push("urgent");
+  if($("eRegular").checked) types.push("regular");
+  if(!types.length) return showMsg("editMsg", "기도 구분을 하나 이상 선택해 주세요.");
+  if(!$("eTitle").value.trim()) return showMsg("editMsg", "제목을 입력해 주세요.");
+  if(!$("eContent").value.trim()) return showMsg("editMsg", "내용을 입력해 주세요.");
+  const { data, error } = await sb.rpc("update_my_prayer", {
+    p_id: editingId, p_phone: mySession.phone, p_pin: mySession.pin,
+    p_title: $("eTitle").value.trim(), p_content: $("eContent").value.trim(),
+    p_types: types, p_end_date: $("eEndDate").value || null
+  });
+  if(error || !data) return showMsg("editMsg", "수정에 실패했습니다. 다시 시도해 주세요.");
+  await fetchMyPrayers();
+}
+async function deleteMyPrayer(){
+  if(!confirm("이 기도제목을 삭제(철회)할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+  const { data, error } = await sb.rpc("delete_my_prayer", { p_id: editingId, p_phone: mySession.phone, p_pin: mySession.pin });
+  if(error || !data) return showMsg("editMsg", "삭제에 실패했습니다. 다시 시도해 주세요.");
+  const ok = await fetchMyPrayers();
+  if(!ok){ myPrayers = []; $("myList").innerHTML = '<div class="card">남은 기도제목이 없습니다.</div>'; go("scr-mylist"); }
+}
+function logoutMy(){ mySession = null; sessionStorage.removeItem("prayer_my"); go("scr-home"); }
+
+/* ============ 관리자 ============ */
+function goAdmin(){
+  if(adminUser && adminProfile && adminProfile.role !== "pending"){ openAdmin(); }
+  else if(adminUser){ go("scr-pending"); }
+  else go("scr-adminlogin");
+}
+async function adminLogin(){
+  const { data, error } = await sb.auth.signInWithPassword({ email: $("aEmail").value.trim(), password: $("aPw").value });
+  if(error) return showMsg("adminMsg", "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요.");
+  adminUser = data.user; await loadProfile(); goAdmin();
+}
+async function adminSignup(){
+  const email = $("aEmail").value.trim(), pw = $("aPw").value;
+  if(!email || pw.length < 6) return showMsg("adminMsg", "이메일과 비밀번호(6자 이상)를 입력한 뒤 회원가입을 눌러주세요.");
+  const { error } = await sb.auth.signUp({ email, password: pw });
+  if(error) return showMsg("adminMsg", "가입에 실패했습니다. (" + esc(error.message) + ")");
+  showMsg("adminMsg", "가입 요청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다. (이메일 확인이 필요한 경우 메일함을 확인하세요)", true);
+}
+async function loadProfile(){
+  const { data } = await sb.from("profiles").select("*").eq("id", adminUser.id).single();
+  adminProfile = data || { role: "pending" };
+}
+async function adminLogout(){
+  await sb.auth.signOut(); adminUser = null; adminProfile = null; go("scr-home");
+}
+async function openAdmin(){
+  const { data, error } = await sb.from("prayers").select("*").order("created_at", { ascending: false });
+  if(error){ alert("목록을 불러오지 못했습니다."); return; }
+  allPrayers = data || [];
+  $("adminWho").textContent = (adminProfile.role === "admin" ? "관리자" : "열람권한자") + " · " + (adminUser.email || "");
+  $("stUrgent").textContent = allPrayers.filter(p => (p.types||[]).includes("urgent") && p.status === "received").length;
+  $("stNew").textContent = allPrayers.filter(p => p.status === "received").length;
+  $("stPraying").textContent = allPrayers.filter(p => p.status === "praying").length;
+  const isAdmin = adminProfile.role === "admin";
+  $("btnMembers").style.display = isAdmin ? "" : "none";
+  $("btnSettings").style.display = isAdmin ? "" : "none";
+  renderAdminList(); go("scr-admin");
+}
+function setFilter(f, el){
+  adminFilter = f;
+  document.querySelectorAll("#filterChips .chip").forEach(c => c.classList.toggle("on", c.dataset.f === f));
+  renderAdminList();
+}
+function phoneFor(p){
+  if(adminProfile.role === "viewer" && SETTINGS.viewer_phone_mask) return maskPhone(p.phone);
+  return p.phone;
+}
+function renderAdminList(){
+  const q = ($("adminSearch").value || "").toLowerCase();
+  let list = allPrayers.slice();
+  if(adminFilter === "urgent") list = list.filter(p => (p.types||[]).includes("urgent"));
+  else if(adminFilter === "regular") list = list.filter(p => (p.types||[]).includes("regular"));
+  else if(adminFilter !== "all") list = list.filter(p => p.status === adminFilter);
+  if(q) list = list.filter(p => (p.title + p.content + p.name).toLowerCase().includes(q));
+  list.sort((a, b) => {
+    const au = (a.types||[]).includes("urgent") && a.status === "received" ? 0 : 1;
+    const bu = (b.types||[]).includes("urgent") && b.status === "received" ? 0 : 1;
+    return au - bu || new Date(b.created_at) - new Date(a.created_at);
+  });
+  $("adminList").innerHTML = list.length ? list.map(p => `
+    <div class="card prayer-item" onclick="openDetail('${p.id}')">
+      <div class="row between"><h3>${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
+      <div>${typeBadges(p.types)}</div>
+      <div class="preview">${esc(p.content)}</div>
+      <div class="meta">${p.is_anonymous ? "익명" : esc(p.name)} · ${fmtDate(p.created_at)}${p.updated_at && p.updated_at !== p.created_at ? " · 본인 수정함" : ""}</div>
+    </div>`).join("") : '<div class="card">해당하는 기도제목이 없습니다.</div>';
+}
+async function openDetail(id){
+  detailId = id;
+  const p = allPrayers.find(x => x.id === id); if(!p) return;
+  const isAdmin = adminProfile.role === "admin";
+  $("detailBox").innerHTML = `
+    <div class="row between"><h3 style="margin:0">${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
+    <div style="margin:8px 0">${typeBadges(p.types)}</div>
+    <p style="white-space:pre-wrap">${esc(p.content)}</p>
+    <div class="meta" style="color:var(--sub); font-size:14px">
+      제출자: ${p.is_anonymous ? "익명" : esc(p.name)} · 연락처: ${esc(phoneFor(p))}<br>
+      대상: ${esc(p.target_name || "-")} · 접수: ${fmtDate(p.created_at)}${p.desired_end_date ? " · 종료 희망: " + p.desired_end_date : ""}
+    </div>
+    ${isAdmin ? `<div class="row" style="margin-top:14px">
+      <button class="btn btn-ghost btn-small" onclick="setStatus('praying')">기도 중으로</button>
+      <button class="btn btn-ghost btn-small" onclick="setStatus('answered')">응답됨</button>
+      <button class="btn btn-ghost btn-small" onclick="setStatus('archived')">보관</button>
+      <button class="btn btn-ghost btn-small" onclick="setStatus('received')">접수됨으로</button>
+      <button class="btn btn-danger btn-small" onclick="adminDelete()">삭제</button>
+    </div>` : '<p class="hint" style="margin-top:12px">열람권한자는 읽기 전용입니다. 상태 변경은 관리자에게 요청해 주세요.</p>'}`;
+  await loadMemos(); go("scr-detail");
+}
+async function setStatus(s){
+  const { error } = await sb.from("prayers").update({ status: s, updated_at: new Date().toISOString() }).eq("id", detailId);
+  if(error) return alert("상태 변경에 실패했습니다.");
+  await openAdmin(); openDetail(detailId);
+}
+async function adminDelete(){
+  if(!confirm("이 기도제목을 삭제할까요? 되돌릴 수 없습니다.")) return;
+  const { error } = await sb.from("prayers").delete().eq("id", detailId);
+  if(error) return alert("삭제에 실패했습니다.");
+  openAdmin();
+}
+async function loadMemos(){
+  const { data } = await sb.from("prayer_memos").select("*").eq("prayer_id", detailId).order("created_at", { ascending: true });
+  $("memoList").innerHTML = (data && data.length) ? data.map(m => `
+    <div class="memo"><div>${esc(m.memo)}</div><div class="m-meta">${esc(m.author_email || "")} · ${fmtDate(m.created_at)}</div></div>`).join("")
+    : '<p class="hint">아직 메모가 없습니다.</p>';
+}
+async function addMemo(){
+  const v = $("memoInput").value.trim(); if(!v) return;
+  const { error } = await sb.from("prayer_memos").insert({ prayer_id: detailId, author_id: adminUser.id, author_email: adminUser.email, memo: v });
+  if(error) return alert("메모 등록에 실패했습니다.");
+  $("memoInput").value = ""; loadMemos();
+}
+
+/* ============ 권한 관리 / 설정 (관리자) ============ */
+async function goMembers(){
+  const { data, error } = await sb.from("profiles").select("*").order("created_at", { ascending: true });
+  if(error) return alert("목록을 불러오지 못했습니다.");
+  $("memberList").innerHTML = (data || []).map(m => `
+    <div class="card">
+      <div class="row between"><b>${esc(m.email || "")}</b>
+      <select onchange="changeRole('${m.id}', this.value)" style="width:auto">
+        <option value="pending" ${m.role === "pending" ? "selected" : ""}>승인 대기</option>
+        <option value="viewer" ${m.role === "viewer" ? "selected" : ""}>열람권한자</option>
+        <option value="admin" ${m.role === "admin" ? "selected" : ""}>관리자</option>
+      </select></div>
+      <div class="meta" style="color:var(--sub); font-size:13px">가입: ${fmtDate(m.created_at)}</div>
+    </div>`).join("") || '<div class="card">가입한 사람이 없습니다.</div>';
+  go("scr-members");
+}
+async function changeRole(id, role){
+  const { error } = await sb.from("profiles").update({ role }).eq("id", id);
+  if(error) alert("변경에 실패했습니다."); else alert("변경되었습니다.");
+}
+function goSettings(){
+  $("sAppName").value = SETTINGS.app_name || "";
+  $("sChurchName").value = SETTINGS.church_name || "";
+  $("sGreeting").value = SETTINGS.greeting || "";
+  $("sVerse").value = SETTINGS.verse_text || "";
+  $("sAdminEmails").value = (SETTINGS.admin_emails || []).join("\n");
+  $("sAllowAnon").checked = !!SETTINGS.allow_anonymous;
+  $("sViewerMask").checked = !!SETTINGS.viewer_phone_mask;
+  $("sRetention").value = String(SETTINGS.retention_months || 3);
+  go("scr-settings");
+}
+async function saveSettings(){
+  const next = Object.assign({}, SETTINGS, {
+    app_name: $("sAppName").value.trim(), church_name: $("sChurchName").value.trim(),
+    greeting: $("sGreeting").value, verse_text: $("sVerse").value,
+    admin_emails: $("sAdminEmails").value.split(/\n+/).map(s => s.trim()).filter(Boolean),
+    allow_anonymous: $("sAllowAnon").checked, viewer_phone_mask: $("sViewerMask").checked,
+    retention_months: Number($("sRetention").value)
+  });
+  const { error } = await sb.from("app_settings").update({ data: next }).eq("id", 1);
+  if(error) return showMsg("setMsg", "저장에 실패했습니다.");
+  SETTINGS = next; applySettings();
+  showMsg("setMsg", "저장되었습니다. 앱 전체에 바로 적용됩니다.", true);
+}
+
+init();
+</script>
+</body>
+</html>
