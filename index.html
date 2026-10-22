@@ -230,27 +230,32 @@ footer{color:var(--sub); font-size:13px; text-align:center; margin-top:30px}
     </div>
   </section>
 
-  <!-- 관리자 로그인 -->
+  <!-- 관리자·중보기도팀 로그인/가입 -->
   <section id="scr-adminlogin" class="screen">
     <button class="backlink" onclick="go('scr-home')">← 처음으로</button>
     <div class="card">
-      <h3 style="margin-top:0">관리자·중보기도팀 로그인</h3>
+      <h3 style="margin-top:0">관리자·중보기도팀</h3>
+      <p class="hint" style="margin-top:0">관리자·중보기도팀만 가입·로그인합니다. (일반 성도는 가입 없이 기도제목을 남길 수 있습니다)</p>
       <div class="msg" id="adminMsg"></div>
-      <label class="f">이메일</label>
-      <input type="email" id="aEmail" autocomplete="email">
-      <label class="f">비밀번호</label>
-      <input type="password" id="aPw" autocomplete="current-password">
+      <label class="f">이름 <span class="hint">(가입할 때만 필요)</span></label>
+      <input type="text" id="aName" autocomplete="name">
+      <label class="f">휴대폰번호</label>
+      <input type="tel" id="aPhone" placeholder="010-0000-0000" inputmode="tel" autocomplete="tel">
+      <label class="f">PIN (숫자 4자리)</label>
+      <input type="password" id="aPin" inputmode="numeric" maxlength="4">
       <div style="height:16px"></div>
       <button class="btn btn-primary" onclick="adminLogin()">로그인</button>
-      <p class="hint" style="margin-top:12px">처음이신가요? <a href="#" onclick="adminSignup();return false;">회원가입</a> 후 관리자의 승인을 받아야 열람할 수 있습니다.</p>
+      <div style="height:10px"></div>
+      <button class="btn btn-ghost" onclick="teamSignup()">처음이면 가입하기</button>
+      <p class="hint" style="margin-top:12px">가입 후에는 관리자의 승인이 있어야 기도제목을 볼 수 있습니다. PIN을 5번 틀리면 10분간 로그인이 잠깁니다.</p>
     </div>
   </section>
 
   <!-- 승인 대기 -->
   <section id="scr-pending" class="screen">
     <div class="card" style="text-align:center">
-      <h3>승인 대기 중입니다</h3>
-      <p>관리자가 열람 권한을 승인하면 기도제목을 볼 수 있습니다.</p>
+      <h3>가입이 접수되었습니다</h3>
+      <p>관리자가 승인하면 기도제목을 볼 수 있습니다.<br>승인 후 같은 번호와 PIN으로 로그인하세요.</p>
       <button class="btn btn-ghost" onclick="adminLogout()">로그아웃</button>
     </div>
   </section>
@@ -358,7 +363,8 @@ let SETTINGS = {
 let mySession = null;        // {phone, pin}
 let myPrayers = [];
 let editingId = null;
-let adminUser = null, adminProfile = null;
+let teamSession = null;      // {phone, pin}
+let teamMe = null;           // {id, name, role}
 let allPrayers = [], adminFilter = "all", detailId = null;
 
 const $ = id => document.getElementById(id);
@@ -395,8 +401,12 @@ async function init(){
   }catch(e){ /* 기본값 사용 */ }
   applySettings();
   go("scr-home");
-  const { data: sess } = await sb.auth.getSession();
-  if(sess && sess.session){ adminUser = sess.session.user; await loadProfile(); }
+  const savedTeam = sessionStorage.getItem("prayer_team");
+  if(savedTeam){
+    teamSession = JSON.parse(savedTeam);
+    const { data } = await sb.rpc("team_login", { p_phone: teamSession.phone, p_pin: teamSession.pin });
+    if(data) teamMe = data; else { teamSession = null; sessionStorage.removeItem("prayer_team"); }
+  }
 }
 
 /* ============ 성도: 제출 ============ */
@@ -495,40 +505,51 @@ async function deleteMyPrayer(){
 }
 function logoutMy(){ mySession = null; sessionStorage.removeItem("prayer_my"); go("scr-home"); }
 
-/* ============ 관리자 ============ */
+/* ============ 관리자·중보기도팀 (이름·연락처·PIN) ============ */
 function goAdmin(){
-  if(adminUser && adminProfile && adminProfile.role !== "pending"){ openAdmin(); }
-  else if(adminUser){ go("scr-pending"); }
+  if(teamMe && teamMe.role !== "pending"){ openAdmin(); }
+  else if(teamMe){ go("scr-pending"); }
   else go("scr-adminlogin");
 }
+function teamCreds(){
+  return { phone: digits($("aPhone").value), pin: $("aPin").value.trim() };
+}
 async function adminLogin(){
-  const { data, error } = await sb.auth.signInWithPassword({ email: $("aEmail").value.trim(), password: $("aPw").value });
-  if(error) return showMsg("adminMsg", "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요.");
-  adminUser = data.user; await loadProfile(); goAdmin();
+  const { phone, pin } = teamCreds();
+  if(!/^01[0-9]{8,9}$/.test(phone)) return showMsg("adminMsg", "휴대폰번호를 정확히 입력해 주세요.");
+  if(!/^[0-9]{4}$/.test(pin)) return showMsg("adminMsg", "PIN 4자리를 입력해 주세요.");
+  const { data, error } = await sb.rpc("team_login", { p_phone: phone, p_pin: pin });
+  if(error) return showMsg("adminMsg", error.message.includes("too many") ? "시도가 너무 많아 10분간 잠겼습니다. 잠시 후 다시 시도해 주세요." : "로그인에 실패했습니다.");
+  if(!data) return showMsg("adminMsg", "일치하는 정보가 없습니다. 번호와 PIN을 확인하거나, 처음이면 [가입하기]를 눌러주세요.");
+  teamSession = { phone, pin }; teamMe = data;
+  sessionStorage.setItem("prayer_team", JSON.stringify(teamSession));
+  goAdmin();
 }
-async function adminSignup(){
-  const email = $("aEmail").value.trim(), pw = $("aPw").value;
-  if(!email || pw.length < 6) return showMsg("adminMsg", "이메일과 비밀번호(6자 이상)를 입력한 뒤 회원가입을 눌러주세요.");
-  const { error } = await sb.auth.signUp({ email, password: pw });
-  if(error) return showMsg("adminMsg", "가입에 실패했습니다. (" + esc(error.message) + ")");
-  showMsg("adminMsg", "가입 요청이 완료됐습니다. 관리자 승인 후 로그인할 수 있습니다. (이메일 확인이 필요한 경우 메일함을 확인하세요)", true);
+async function teamSignup(){
+  const name = $("aName").value.trim();
+  const { phone, pin } = teamCreds();
+  if(!name) return showMsg("adminMsg", "가입하려면 이름을 입력해 주세요.");
+  if(!/^01[0-9]{8,9}$/.test(phone)) return showMsg("adminMsg", "휴대폰번호를 정확히 입력해 주세요.");
+  if(!/^[0-9]{4}$/.test(pin)) return showMsg("adminMsg", "PIN은 숫자 4자리로 정해 주세요.");
+  const { data, error } = await sb.rpc("team_signup", { p_name: name, p_phone: phone, p_pin: pin });
+  if(error) return showMsg("adminMsg", error.message.includes("already registered") ? "이미 가입된 번호입니다. 로그인해 주세요." : "가입에 실패했습니다. (" + esc(error.message) + ")");
+  teamSession = { phone, pin }; teamMe = data;
+  sessionStorage.setItem("prayer_team", JSON.stringify(teamSession));
+  if(data.role === "admin") showMsg("adminMsg", "가입되었습니다.", true);
+  goAdmin();
 }
-async function loadProfile(){
-  const { data } = await sb.from("profiles").select("*").eq("id", adminUser.id).single();
-  adminProfile = data || { role: "pending" };
-}
-async function adminLogout(){
-  await sb.auth.signOut(); adminUser = null; adminProfile = null; go("scr-home");
+function adminLogout(){
+  teamSession = null; teamMe = null; sessionStorage.removeItem("prayer_team"); go("scr-home");
 }
 async function openAdmin(){
-  const { data, error } = await sb.from("prayers").select("*").order("created_at", { ascending: false });
-  if(error){ alert("목록을 불러오지 못했습니다."); return; }
+  const { data, error } = await sb.rpc("team_list_prayers", { p_phone: teamSession.phone, p_pin: teamSession.pin });
+  if(error || data === null){ alert("목록을 불러오지 못했습니다. 다시 로그인해 주세요."); adminLogout(); return; }
   allPrayers = data || [];
-  $("adminWho").textContent = (adminProfile.role === "admin" ? "관리자" : "열람권한자") + " · " + (adminUser.email || "");
+  $("adminWho").textContent = teamMe.name + " · " + (teamMe.role === "admin" ? "관리자" : "열람권한자");
   $("stUrgent").textContent = allPrayers.filter(p => (p.types||[]).includes("urgent") && p.status === "received").length;
   $("stNew").textContent = allPrayers.filter(p => p.status === "received").length;
   $("stPraying").textContent = allPrayers.filter(p => p.status === "praying").length;
-  const isAdmin = adminProfile.role === "admin";
+  const isAdmin = teamMe.role === "admin";
   $("btnMembers").style.display = isAdmin ? "" : "none";
   $("btnSettings").style.display = isAdmin ? "" : "none";
   renderAdminList(); go("scr-admin");
@@ -539,8 +560,7 @@ function setFilter(f, el){
   renderAdminList();
 }
 function phoneFor(p){
-  if(adminProfile.role === "viewer" && SETTINGS.viewer_phone_mask) return maskPhone(p.phone);
-  return p.phone;
+  return p.phone; // 열람권한자 마스킹은 서버(team_list_prayers)에서 설정대로 적용되어 내려옴
 }
 function renderAdminList(){
   const q = ($("adminSearch").value || "").toLowerCase();
@@ -565,7 +585,7 @@ function renderAdminList(){
 async function openDetail(id){
   detailId = id;
   const p = allPrayers.find(x => x.id === id); if(!p) return;
-  const isAdmin = adminProfile.role === "admin";
+  const isAdmin = teamMe.role === "admin";
   $("detailBox").innerHTML = `
     <div class="row between"><h3 style="margin:0">${esc(p.title)}</h3><span class="badge badge-status ${p.status}">${statusLabel(p.status)}</span></div>
     <div style="margin:8px 0">${typeBadges(p.types)}</div>
@@ -584,48 +604,50 @@ async function openDetail(id){
   await loadMemos(); go("scr-detail");
 }
 async function setStatus(s){
-  const { error } = await sb.from("prayers").update({ status: s, updated_at: new Date().toISOString() }).eq("id", detailId);
-  if(error) return alert("상태 변경에 실패했습니다.");
+  const { data, error } = await sb.rpc("team_set_status", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_id: detailId, p_status: s });
+  if(error || !data) return alert("상태 변경에 실패했습니다.");
   await openAdmin(); openDetail(detailId);
 }
 async function adminDelete(){
   if(!confirm("이 기도제목을 삭제할까요? 되돌릴 수 없습니다.")) return;
-  const { error } = await sb.from("prayers").delete().eq("id", detailId);
-  if(error) return alert("삭제에 실패했습니다.");
+  const { data, error } = await sb.rpc("team_delete_prayer", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_id: detailId });
+  if(error || !data) return alert("삭제에 실패했습니다.");
   openAdmin();
 }
 async function loadMemos(){
-  const { data } = await sb.from("prayer_memos").select("*").eq("prayer_id", detailId).order("created_at", { ascending: true });
-  $("memoList").innerHTML = (data && data.length) ? data.map(m => `
-    <div class="memo"><div>${esc(m.memo)}</div><div class="m-meta">${esc(m.author_email || "")} · ${fmtDate(m.created_at)}</div></div>`).join("")
+  const { data } = await sb.rpc("team_list_memos", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_prayer_id: detailId });
+  const list = data || [];
+  $("memoList").innerHTML = list.length ? list.map(m => `
+    <div class="memo"><div>${esc(m.memo)}</div><div class="m-meta">${esc(m.author_name || "")} · ${fmtDate(m.created_at)}</div></div>`).join("")
     : '<p class="hint">아직 메모가 없습니다.</p>';
 }
 async function addMemo(){
   const v = $("memoInput").value.trim(); if(!v) return;
-  const { error } = await sb.from("prayer_memos").insert({ prayer_id: detailId, author_id: adminUser.id, author_email: adminUser.email, memo: v });
-  if(error) return alert("메모 등록에 실패했습니다.");
+  const { data, error } = await sb.rpc("team_add_memo", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_prayer_id: detailId, p_memo: v });
+  if(error || !data) return alert("메모 등록에 실패했습니다.");
   $("memoInput").value = ""; loadMemos();
 }
 
 /* ============ 권한 관리 / 설정 (관리자) ============ */
 async function goMembers(){
-  const { data, error } = await sb.from("profiles").select("*").order("created_at", { ascending: true });
-  if(error) return alert("목록을 불러오지 못했습니다.");
+  const { data, error } = await sb.rpc("team_list_members", { p_phone: teamSession.phone, p_pin: teamSession.pin });
+  if(error || data === null) return alert("목록을 불러오지 못했습니다.");
   $("memberList").innerHTML = (data || []).map(m => `
     <div class="card">
-      <div class="row between"><b>${esc(m.email || "")}</b>
+      <div class="row between"><b>${esc(m.name || "")}</b>
       <select onchange="changeRole('${m.id}', this.value)" style="width:auto">
         <option value="pending" ${m.role === "pending" ? "selected" : ""}>승인 대기</option>
         <option value="viewer" ${m.role === "viewer" ? "selected" : ""}>열람권한자</option>
         <option value="admin" ${m.role === "admin" ? "selected" : ""}>관리자</option>
       </select></div>
-      <div class="meta" style="color:var(--sub); font-size:13px">가입: ${fmtDate(m.created_at)}</div>
+      <div class="meta" style="color:var(--sub); font-size:13px">${esc(m.phone || "")} · 가입: ${fmtDate(m.created_at)}</div>
     </div>`).join("") || '<div class="card">가입한 사람이 없습니다.</div>';
   go("scr-members");
 }
 async function changeRole(id, role){
-  const { error } = await sb.from("profiles").update({ role }).eq("id", id);
-  if(error) alert("변경에 실패했습니다."); else alert("변경되었습니다.");
+  if(id === teamMe.id && role !== "admin"){ alert("본인 권한은 낮출 수 없습니다."); return goMembers(); }
+  const { data, error } = await sb.rpc("team_set_role", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_target: id, p_role: role });
+  if(error || !data) alert("변경에 실패했습니다."); else alert("변경되었습니다.");
 }
 function goSettings(){
   $("sAppName").value = SETTINGS.app_name || "";
@@ -646,8 +668,8 @@ async function saveSettings(){
     allow_anonymous: $("sAllowAnon").checked, viewer_phone_mask: $("sViewerMask").checked,
     retention_months: Number($("sRetention").value)
   });
-  const { error } = await sb.from("app_settings").update({ data: next }).eq("id", 1);
-  if(error) return showMsg("setMsg", "저장에 실패했습니다.");
+  const { data, error } = await sb.rpc("team_save_settings", { p_phone: teamSession.phone, p_pin: teamSession.pin, p_data: next });
+  if(error || !data) return showMsg("setMsg", "저장에 실패했습니다.");
   SETTINGS = next; applySettings();
   showMsg("setMsg", "저장되었습니다. 앱 전체에 바로 적용됩니다.", true);
 }
